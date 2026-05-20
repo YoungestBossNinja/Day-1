@@ -1,0 +1,121 @@
+#####################
+
+### Declaratie
+
+#####################
+$csvfile = "$PSScriptRoot\users.csv"
+$domainname = "PurpleLab.local"
+
+# Functie Add-ToLog
+
+# Voor het wegschrijven van meldingen in een logboek
+
+# Voorbeeld 1: Add-ToLog -Message "Gebruiker is aangemaakt in Active Directory"
+
+function Add-ToLog(){
+param (
+[Parameter(Mandatory)]
+[string]$Message # verplicht
+)
+$Path = "$PSScriptRoot\Log\ADUserlog.txt"
+Try {
+Add-Content -Path $Path -Value "$(Get-Date);$($env:computername);$($Message);$($[MyInvocation.MyCommand.Name](http://myinvocation.mycommand.name/))" -ErrorAction Stop
+}
+Catch{
+Write-Error "Kan geen gegevens wegschrijven naar $Path ."
+Start-Sleep 5
+exit
+}
+}
+
+#####################
+
+### Initialiseren
+
+#####################
+
+# C1 *** Controleer op versie 7 van Powershell. Zie ook de stroomdiagram voor werking.
+
+# Code hier
+
+# C2 *** Vraag de gebruiker voor uitvoeren script. Zie ook de stroomdiagram voor werking.
+
+# Code hier
+
+# C3 *** Controleer of de module ActiveDirectory bestaat. Zie ook de stroomdiagram voor werking.
+
+# Code hier
+
+# C4 *** Controleer of het .csv (bronbestand) bestaat. Zie ook de stroomdiagram voor werking.
+
+# Code hier
+
+#####################
+
+### Uitvoer
+
+#####################
+
+# D1 *** geef een omschrijving ***
+
+Add-ToLog -Message "*** Geef een passende melding***" #M1
+
+# D2 *** geef een omschrijving ***
+
+$ADUsers = Import-Csv $csvfile -Delimiter ";"
+
+foreach ($User in $ADUsers)
+{
+$Username    = $User.username
+$Password    = $User.password
+$Firstname   = $User.firstname
+$Lastname    = $User.lastname
+$Department  = $User.department
+$OU          = "OU=$Department,OU=PurpleLab,DC=purplelab,DC=local"
+
+```
+   # D3 *** geef een omschrijving ***
+   if (Get-ADUser -F {SamAccountName -eq $Username})
+   {
+        # D4 *** geef een omschrijving ***
+        $Message = "*** Geef een passende melding***" #M2
+        Write-Warning $Message
+        Add-ToLog -Message $Message
+   }
+   else
+   {
+        # D5 *** geef een omschrijving ***
+        New-ADUser `
+        -SamAccountName $Username `
+        -UserPrincipalName "$Username@$Domainname" `
+        -Name "$Firstname $Lastname" `
+        -GivenName $Firstname `
+        -Surname $Lastname `
+        -Enabled $True `
+        -ChangePasswordAtLogon $True `
+        -DisplayName "$Lastname, $Firstname" `
+        -Department $Department `
+        -Path $OU `
+        -AccountPassword (convertto-securestring $Password -AsPlainText -Force)
+
+        # D6 *** geef een omschrijving ***
+        $Message = "*** Geef een passende melding***" #M3
+        Write-Host $Message -ForegroundColor Yellow
+        Add-ToLog -Message $Message
+   }
+
+```
+
+}
+
+#####################
+
+### Afronden
+
+#####################
+
+# D7 *** geef een omschrijving ***
+
+$Message = "*** Geef een passende melding***" #M4
+Write-Host $Message -ForegroundColor Green
+Add-ToLog -Message $Message
