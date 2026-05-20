@@ -1,0 +1,168 @@
+Hieronder volgen de stappen en de benodigde SQL-code die je in **phpMyAdmin** moet uitvoeren.
+
+### Stap 1: MySQL Gebruiker aanmaken
+
+
+
+Je moet een gebruiker aanmaken die alleen toegang heeft tot de database `purple_hrm`.
+
+Ga in phpMyAdmin naar het tabblad **Gebruikersaccounts** (User accounts) en klik op "Gebruiker toevoegen". Of voer deze SQL uit als `root`:
+
+```sql
+CREATE USER 'Kandidaat'@'localhost' IDENTIFIED BY '3xamen2023!';
+GRANT ALL PRIVILEGES ON purple_hrm.* TO 'Kandidaat'@'localhost';
+FLUSH PRIVILEGES;
+
+```
+
+Vergeet niet een screenshot te maken van het succesvolle inloggen voor je verslag! 
+
+---
+
+### Stap 2: Gegevens ophalen (Select Queries)
+
+Zorg dat je ingelogd bent als de nieuwe gebruiker 'Kandidaat' of dat je de `purple_hrm` database geselecteerd hebt.
+
+#### Query 1: Totaal aantal medewerkers in dienst
+
+
+Je moet tellen hoeveel medewerkers geen ontslagdatum hebben (of waarbij deze in de toekomst ligt). De alias moet `totaal_indienst` zijn.
+
+```sql
+SELECT COUNT(*) AS totaal_indienst 
+FROM employees 
+WHERE outservice_date IS NULL;
+
+```
+
+#### Query 2: Overzicht medewerkers in dienst
+
+
+Hier moet je data combineren en velden samenvoegen. Omdat de afdelingsnaam (`department`) gevraagd wordt, moet je waarschijnlijk een `JOIN` maken met een tabel die `departments` heet (check je ERD voor de exacte tabelnaam).
+
+```sql
+SELECT 
+    e.first_name AS firstname,
+    e.last_name AS lastname,
+    e.address AS adres,
+    e.city,
+    e.zipcode,
+    e.email,
+    CONCAT(e.first_name, e.last_name) AS username,
+    d.department_name AS department
+FROM 
+    employees e
+INNER JOIN 
+    departments d ON e.department_id = d.id
+WHERE 
+    e.outservice_date IS NULL;
+
+```
+
+*(Let op: Controleer in je ERD of de tabel `departments` heet en of de kolom `department_name` of `name` is).*
+
+#### Query 3: Medewerkers uit dienst (Jan 2022 - Dec 2022)
+
+
+Sorteren op `outservice_date` van oud naar nieuw (ASC).
+
+```sql
+SELECT 
+    first_name, 
+    last_name, 
+    CONCAT(first_name, last_name) AS username
+FROM 
+    employees 
+WHERE 
+    outservice_date BETWEEN '2022-01-01' AND '2022-12-31'
+ORDER BY 
+    outservice_date ASC;
+
+```
+
+---
+
+### Stap 3: Database aanpassen (DDL & DML)
+
+Je moet de structuur van de database wijzigen om de Active Directory status bij te houden.
+
+#### 1. Nieuwe tabel `adstatus` aanmaken
+
+
+Volgens de instructies en de data die erin moet (zie stap 2b), heeft deze tabel een ID en een tekstveld nodig.
+
+```sql
+CREATE TABLE adstatus (
+    status_id INT(10) PRIMARY KEY,
+    status VARCHAR(255) NOT NULL
+);
+
+```
+
+#### 2. Tabel `employees` uitbreiden
+
+
+Voeg de kolom `adstatus_id` toe en maak de relatie (Foreign Key).
+
+```sql
+-- Kolom toevoegen
+ALTER TABLE employees 
+ADD COLUMN adstatus_id INT(10);
+
+-- Relatie leggen (Foreign Key)
+ALTER TABLE employees 
+ADD CONSTRAINT fk_adstatus 
+FOREIGN KEY (adstatus_id) REFERENCES adstatus(status_id);
+
+```
+
+#### 3. Statussen toevoegen
+
+
+Voeg de vier specifieke rijen toe aan de nieuwe tabel.
+
+```sql
+INSERT INTO adstatus (status_id, status) VALUES 
+(0, 'Onbekend'),
+(1, 'In de Active Directory en user is actief.'),
+(2, 'In de Active Directory en user is niet actief.'),
+(3, 'Niet in de Active Directory');
+
+```
+
+---
+
+### Stap 4: Update en Controle
+
+#### Query 4: Update status voor medewerker 145
+
+
+Zet de status van medewerker met ID 145 op '3' (Niet in de Active Directory).
+
+```sql
+UPDATE employees 
+SET adstatus_id = 3 
+WHERE id = 145;
+
+```
+
+*(Check even of de primaire sleutel in `employees` daadwerkelijk `id` heet of `employee_id`).*
+
+#### Query 5: Controleer Foreign Key (Delete query)
+
+
+Probeer status 3 te verwijderen. Omdat medewerker 145 nu gekoppeld is aan status 3 (door Query 4), mag deze query **NIET** lukken. Dit bewijst dat de relatie werkt.
+
+```sql
+DELETE FROM adstatus 
+WHERE status_id = 3;
+
+```
+
+*Resultaat: Je zou een foutmelding moeten krijgen (Foreign key constraint fails). Maak hier een screenshot van voor je verslag.*
+
+### Afronding
+
+Vergeet niet alle SQL-codes en de resultaten (screenshots/exports) in **Bijlage 3.2 Sjabloon Verslag SQL** te plakken, zoals gevraagd in het document.
+
+**Kan ik je helpen met het controleren van een specifieke foutmelding als een query niet werkt?**
